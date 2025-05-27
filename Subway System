@@ -1,0 +1,46 @@
+package 地铁模拟;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+class SubwaySystem {
+    private Map<String, SubwayLine> lines;
+    private Map<String, Station> stations;
+    
+    public SubwaySystem() {
+        this.lines = new HashMap<>();
+        this.stations = new HashMap<>();
+    }
+    
+    public void addLine(SubwayLine line) {
+        lines.put(line.getLineName(), line);
+        for (Station station : line.getStations()) {
+            if (!stations.containsKey(station.getName())) {
+                stations.put(station.getName(), station);
+            }
+            stations.get(station.getName()).addLine(line.getLineName());
+        }
+    }
+    
+    public SubwayLine getLine(String lineName) {
+        return lines.get(lineName);
+    }
+    
+    public Station getStation(String stationName) {
+        return stations.get(stationName);
+    }
+    
+    public Set<String> getAllLineNames() {
+        return new HashSet<>(lines.keySet());
+    }
+    
+    public Set<String> getAllStationNames() {
+        return new HashSet<>(stations.keySet());
+    }
+    
+    public boolean containsStation(String stationName) {
+        return stations.containsKey(stationName);
+    }
+}
