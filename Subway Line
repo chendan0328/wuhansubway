@@ -1,0 +1,45 @@
+package 地铁模拟;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+class SubwayLine {
+    private String lineName;
+    private List<Station> stations;
+    private Map<String, Map<String, Double>> distances;
+    
+    public SubwayLine(String lineName) {
+        this.lineName = lineName;
+        this.stations = new ArrayList<>();
+        this.distances = new HashMap<>();
+    }
+    
+    public void addStation(Station station) {
+        if (!stations.contains(station)) {
+            stations.add(station);
+            distances.put(station.getName(), new HashMap<>());
+        }
+    }
+    
+    public void addDistance(String station1, String station2, double distance) {
+        distances.get(station1).put(station2, distance);
+        distances.get(station2).put(station1, distance);
+    }
+    
+    public double getDistance(String station1, String station2) {
+        return distances.get(station1).getOrDefault(station2, -1.0);
+    }
+    
+    public String getLineName() {
+        return lineName;
+    }
+    
+    public List<Station> getStations() {
+        return new ArrayList<>(stations);
+    }
+    
+    public boolean containsStation(String stationName) {
+        return distances.containsKey(stationName);
+    }
+}
