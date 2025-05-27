@@ -1,0 +1,297 @@
+package 地铁模拟;
+import java.util.*;
+
+class SubwayService {
+    private SubwaySystem system;
+    
+    public SubwayService(SubwaySystem system) {
+        this.system = system;
+    }
+    
+   
+    public Map<String, Set<String>> getAllTransferStations() {
+        Map<String, Set<String>> transferStations = new HashMap<>();
+        
+        for (String stationName : system.getAllStationNames()) {
+            Station station = system.getStation(stationName);
+            if (station.getLines().size() >= 2) {
+                transferStations.put(stationName, station.getLines());
+            }
+        }
+        
+        return transferStations;
+    }
+    
+   
+    public Map<String, Map<String, Double>> getNearbyStations(String stationName, double maxDistance) 
+            throws IllegalArgumentException {
+        if (!system.containsStation(stationName)) {
+            throw new IllegalArgumentException("站点不存在");
+        }
+        
+        Map<String, Map<String, Double>> result = new HashMap<>();
+        Station startStation = system.getStation(stationName);
+        
+        
+        Queue<String> queue = new LinkedList<>();
+        Map<String, Double> distances = new HashMap<>();
+        Set<String> visited = new HashSet<>();
+        
+        queue.add(stationName);
+        distances.put(stationName, 0.0);
+        visited.add(stationName);
+        
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            double currentDistance = distances.get(current);
+            
+            if (currentDistance > maxDistance) continue;
+            
+           
+            for (String line : system.getStation(current).getLines()) {
+                SubwayLine subwayLine = system.getLine(line);
+                for (Station neighborStation : subwayLine.getStations()) {
+                    String neighborName = neighborStation.getName();
+                    if (!neighborName.equals(current)) {
+                        double edgeDistance = subwayLine.getDistance(current, neighborName);
+                        if (edgeDistance > 0) {
+                            double newDistance = currentDistance + edgeDistance;
+                            
+                            if (!distances.containsKey(neighborName) || newDistance < distances.get(neighborName)) {
+                                distances.put(neighborName, newDistance);
+                                
+                                if (newDistance <= maxDistance && !visited.contains(neighborName)) {
+                                    visited.add(neighborName);
+                                    queue.add(neighborName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+       
+        for (Map.Entry<String, Double> entry : distances.entrySet()) {
+            if (entry.getValue() > 0 && entry.getValue() <= maxDistance) {
+                String name = entry.getKey();
+                Station station = system.getStation(name);
+                for (String line : station.getLines()) {
+                    if (!result.containsKey(name)) {
+                        result.put(name, new HashMap<>());
+                    }
+                    result.get(name).put(line, entry.getValue());
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+   
+    public List<Path> getAllPaths(String start, String end) throws IllegalArgumentException {
+        if (!system.containsStation(start) || !system.containsStation(end)) {
+            throw new IllegalArgumentException("站点不存在");
+        }
+        
+        List<Path> allPaths = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        Path currentPath = new Path();
+        
+        dfsFindPaths(start, end, visited, currentPath, allPaths);
+        
+        return allPaths;
+    }
+    
+    private void dfsFindPaths(String current, String end, Set<String> visited, 
+                            Path currentPath, List<Path> allPaths) {
+        if (current.equals(end)) {
+            allPaths.add(currentPath.copy());
+            return;
+        }
+        
+        visited.add(current);
+        
+        for (String line : system.getStation(current).getLines()) {
+            SubwayLine subwayLine = system.getLine(line);
+            for (Station neighborStation : subwayLine.getStations()) {
+                String neighborName = neighborStation.getName();
+                if (!neighborName.equals(current) && !visited.contains(neighborName)) {
+                    double distance = subwayLine.getDistance(current, neighborName);
+                    if (distance > 0) {
+                        currentPath.addStation(neighborName, distance);
+                        dfsFindPaths(neighborName, end, new HashSet<>(visited), currentPath, allPaths);
+                       
+                        currentPath.getStations().remove(currentPath.getStations().size() - 1);
+                        currentPath.totalDistance -= distance;
+                    }
+                }
+            }
+        }
+    }
+    
+  
+    public Path getShortestPath(String start, String end) throws IllegalArgumentException {
+        if (!system.containsStation(start) || !system.containsStation(end)) {
+            throw new IllegalArgumentException("站点不存在");
+        }
+        
+      
+        PriorityQueue<PathNode> queue = new PriorityQueue<>();
+        Map<String, Double> distances = new HashMap<>();
+        Map<String, String> previous = new HashMap<>();
+        Set<String> visited = new HashSet<>();
+     
+        for (String station : system.getAllStationNames()) {
+            distances.put(station, Double.MAX_VALUE);
+        }
+        distances.put(start, 0.0);
+        queue.add(new PathNode(start, 0.0));
+        
+        while (!queue.isEmpty()) {
+            PathNode current = queue.poll();
+            String currentName = current.stationName;
+            
+            if (visited.contains(currentName)) continue;
+            visited.add(currentName);
+            
+            if (currentName.equals(end)) break;
+            
+         
+            for (String line : system.getStation(currentName).getLines()) {
+                SubwayLine subwayLine = system.getLine(line);
+                for (Station neighborStation : subwayLine.getStations()) {
+                    String neighborName = neighborStation.getName();
+                    if (!neighborName.equals(currentName)) {
+                        double edgeDistance = subwayLine.getDistance(currentName, neighborName);
+                        if (edgeDistance > 0) {
+                            double newDistance = distances.get(currentName) + edgeDistance;
+                            if (newDistance < distances.get(neighborName)) {
+                                distances.put(neighborName, newDistance);
+                                previous.put(neighborName, currentName);
+                                queue.add(new PathNode(neighborName, newDistance));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+      
+        Path path = new Path();
+        if (distances.get(end) == Double.MAX_VALUE) {
+            return path;
+        }
+        
+        LinkedList<String> pathStations = new LinkedList<>();
+        String current = end;
+        while (current != null) {
+            pathStations.addFirst(current);
+            current = previous.get(current);
+        }
+        
+       
+        for (int i = 0; i < pathStations.size() - 1; i++) {
+            String from = pathStations.get(i);
+            String to = pathStations.get(i + 1);
+            double distance = 0;
+          
+            for (String line : system.getStation(from).getLines()) {
+                SubwayLine subwayLine = system.getLine(line);
+                if (subwayLine.containsStation(to)) {
+                    distance = subwayLine.getDistance(from, to);
+                    break;
+                }
+            }
+            
+            path.addStation(to, distance);
+        }
+        
+        return path;
+    }
+    
+   
+    public String printPathSimply(Path path) {
+        if (path.getStations().isEmpty()) {
+            return "没有找到路径";
+        }
+        
+        List<String> stations = path.getStations();
+        String start = stations.get(0);
+        String currentLine = findCommonLine(start, stations.get(1));
+        String segmentStart = start;
+        StringBuilder sb = new StringBuilder();
+        
+        for (int i = 1; i < stations.size(); i++) {
+            String station = stations.get(i);
+            String commonLine = findCommonLine(stations.get(i-1), station);
+            
+            if (!commonLine.equals(currentLine)) {
+                
+                sb.append("乘坐").append(currentLine).append("从").append(segmentStart)
+                  .append("到").append(stations.get(i-1)).append("，");
+                sb.append("换乘").append(commonLine).append("，");
+                currentLine = commonLine;
+                segmentStart = stations.get(i-1);
+            }
+        }
+        
+       
+        sb.append("乘坐").append(currentLine).append("从").append(segmentStart)
+          .append("到").append(stations.get(stations.size()-1)).append("。");
+        
+        return sb.toString();
+    }
+    
+    private String findCommonLine(String station1, String station2) {
+        Set<String> lines1 = system.getStation(station1).getLines();
+        Set<String> lines2 = system.getStation(station2).getLines();
+        
+        for (String line : lines1) {
+            if (lines2.contains(line)) {
+                return line;
+            }
+        }
+        
+        return ""; 
+    }
+    
+  
+    public double calculateNormalFare(Path path) {
+        double distance = path.getTotalDistance();
+        if (distance <= 4) return 2;
+        else if (distance <= 8) return 3;
+        else if (distance <= 12) return 4;
+        else if (distance <= 18) return 5;
+        else if (distance <= 24) return 6;
+        else if (distance <= 32) return 7;
+        else if (distance <= 40) return 8;
+        else return 8 + Math.ceil((distance - 40) / 20);
+    }
+    
+   
+    public double calculateWuhanPassFare(Path path) {
+        double normalFare = calculateNormalFare(path);
+        return normalFare * 0.9; 
+    }
+    
+    public double calculateDayPassFare(Path path) {
+        return 0; 
+    }
+    
+   
+    private static class PathNode implements Comparable<PathNode> {
+        String stationName;
+        double distance;
+        
+        public PathNode(String stationName, double distance) {
+            this.stationName = stationName;
+            this.distance = distance;
+        }
+        
+        @Override
+        public int compareTo(PathNode other) {
+            return Double.compare(this.distance, other.distance);
+        }
+    }
+}
