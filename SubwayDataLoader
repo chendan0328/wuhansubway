@@ -1,0 +1,41 @@
+package 地铁模拟;
+
+import java.io.*;
+import java.util.*;
+
+class SubwayDataLoader {
+    public static SubwaySystem loadFromFile(String filename) throws IOException {
+        SubwaySystem system = new SubwaySystem();
+        BufferedReader reader = new BufferedReader(new FileReader(filename));
+        String currentLine = null;
+        
+        String line;
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            
+            if (line.endsWith("站点间距")) {
+                currentLine = line.split("号线")[0];
+                system.addLine(new SubwayLine(currentLine + "号线"));
+                reader.readLine(); // 跳过表头
+                reader.readLine(); // 跳过空行
+            } else if (currentLine != null) {
+                String[] parts = line.split("\t");
+                if (parts.length == 2) {
+                    String[] stations = parts[0].split("---");
+                    String station1 = stations[0].trim();
+                    String station2 = stations[1].trim();
+                    double distance = Double.parseDouble(parts[1].trim());
+                    
+                    SubwayLine subwayLine = system.getLine(currentLine + "号线");
+                    subwayLine.addStation(new Station(station1));
+                    subwayLine.addStation(new Station(station2));
+                    subwayLine.addDistance(station1, station2, distance);
+                }
+            }
+        }
+        
+        reader.close();
+        return system;
+    }
+}
