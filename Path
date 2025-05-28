@@ -1,0 +1,39 @@
+package 地铁模拟;
+
+import java.util.ArrayList;
+import java.util.List;
+
+class Path {
+    private List<String> stations;
+    private double totalDistance;
+    
+    public Path() {
+        this.stations = new ArrayList<>();
+        this.totalDistance = 0.0;
+    }
+    
+    public void addStation(String station, double distance) {
+        stations.add(station);
+        totalDistance += distance;
+    }
+    
+    public List<String> getStations() {
+        return new ArrayList<>(stations);
+    }
+    
+    public double getTotalDistance() {
+        return totalDistance;
+    }
+    
+    public Path copy() {
+        Path newPath = new Path();
+        newPath.stations.addAll(this.stations);
+        newPath.totalDistance = this.totalDistance;
+        return newPath;
+    }
+    
+    @Override
+    public String toString() {
+        return stations.toString() + " (距离: " + totalDistance + "km)";
+    }
+}
